@@ -11,6 +11,18 @@
       <div class="person">
         <h1>{{ person.name[0] }}您好！</h1>
       </div>
+
+      <div class="videoArea">
+        <input class="videochoose" type="file" @change="handleFileUpload" />
+        <button class="uploadVideo" @click="uploadVideo">上传视频</button>
+        <div v-if="videoUrl">
+          <video :src="videoUrl" controls></video>
+        </div>
+        <div v-if="uploadProgress !== null">
+          <p>上传进度: {{ uploadProgress }}%</p>
+        </div>
+      </div>
+
       <Footer></Footer>
     </div>
   </div>
@@ -26,19 +38,56 @@ export default {
   data() {
     return {
       person: "",
+      uploadProgress: null,
+      uploadResult: null,
+      selectedFile: null,
+      videoFile: null,
+      videoUrl: "",
+      uploadProgress: 0, // 用于跟踪上传进度的变量
+      uploadMessage: "", // 用于显示后端返回信息的变量
     };
   },
   created() {
-    // this.init();
     let person = JSON.parse(getSession("token"));
-    // alert(person);
     this.person = person;
   },
   methods: {
-    init() {
-      let person = getSession("token");
-      alert(person);
-      this.person = person;
+    handleFileUpload(event) {
+      this.videoFile = event.target.files[0];
+    },
+    async uploadVideo() {
+      try {
+        const formData = new FormData();
+        formData.append("video", this.videoFile);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "http://82.156.245.74:5000/upload_video");
+
+        // 监听上传进度
+        xhr.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable) {
+            this.uploadProgress = Math.round(
+              (event.loaded / event.total) * 100
+            );
+          }
+        });
+
+        // 监听上传完成事件
+        xhr.addEventListener("load", () => {
+          if (xhr.status === 200) {
+            const responseData = JSON.parse(xhr.responseText);
+            this.videoUrl = responseData.videoUrl;
+            alert(responseData.message);
+          } else {
+            throw new Error("Failed to upload video");
+          }
+        });
+
+        // 发送请求
+        xhr.send(formData);
+      } catch (error) {
+        console.error("Error uploading video:", error);
+      }
     },
   },
 };
@@ -54,10 +103,8 @@ export default {
   background-image: url("../assets/background.png");
   background-size: cover;
   background-position: center;
-  filter: brightness(80%); /**亮度 */
+  filter: brightness(80%) contrast(80%) hue-rotate(1deg); /** 合并多个滤镜效果 */
   opacity: 0.85; /**透明度 */
-  filter: hue-rotate(1deg); /**色调 */
-  filter: contrast(80%); /** 对比度 */
 }
 
 .overlay::before {
@@ -71,7 +118,7 @@ export default {
     255,
     255,
     255,
-    0.5
+    0.4
   ); /* 白色蒙版，这里设置了半透明度为 0.5 */
 }
 
@@ -79,8 +126,6 @@ export default {
   position: relative;
   display: flex;
   flex-direction: column;
-  /* justify-content: center;
-  align-items: center; */
   height: 100vh;
 }
 
@@ -98,5 +143,20 @@ export default {
   font-family: "KaiTi";
   color: rgb(17, 10, 40);
   padding-left: 20px;
+}
+
+.videoArea {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  justify-content: center;
+  margin: 4vw, 0;
+  height: 30vw;
+  width: 100%;
+}
+
+.videochoose {
+  width: 70%;
+  font-size: 5vw;
 }
 </style>
